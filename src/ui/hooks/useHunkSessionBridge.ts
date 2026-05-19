@@ -24,10 +24,12 @@ export function useHunkSessionBridge({
   removeLiveComment,
   reviewNoteCount,
   reviewNoteSummaries,
+  hideViewedFiles,
   selectedFile,
   selectedHunk,
   selectedHunkIndex,
   showAgentNotes,
+  viewedFilePaths,
 }: {
   addLiveComment: ReviewController["addLiveComment"];
   addLiveCommentBatch: ReviewController["addLiveCommentBatch"];
@@ -44,10 +46,12 @@ export function useHunkSessionBridge({
   removeLiveComment: ReviewController["removeLiveComment"];
   reviewNoteCount: number;
   reviewNoteSummaries: SessionReviewNoteSummary[];
+  hideViewedFiles: boolean;
   selectedFile: DiffFile | undefined;
   selectedHunk: DiffFile["metadata"]["hunks"][number] | undefined;
   selectedHunkIndex: number;
   showAgentNotes: boolean;
+  viewedFilePaths: Set<string>;
 }) {
   const bridge = useMemo(
     () =>
@@ -99,9 +103,12 @@ export function useHunkSessionBridge({
         liveComments: liveCommentSummaries,
         reviewNoteCount,
         reviewNotes: reviewNoteSummaries,
+        viewedFilePaths: Array.from(viewedFilePaths),
+        hideViewedFiles,
       },
     });
   }, [
+    hideViewedFiles,
     hostClient,
     liveCommentCount,
     liveCommentSummaries,
@@ -112,5 +119,6 @@ export function useHunkSessionBridge({
     selectedHunk,
     selectedHunkIndex,
     showAgentNotes,
+    viewedFilePaths,
   ]);
 }

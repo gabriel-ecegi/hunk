@@ -29,8 +29,7 @@ export function HelpDialog({
         [", / .", "previous / next file"],
         ["{ / }", "previous / next comment"],
         ["← / →", "scroll code left / right (Shift = faster)"],
-        ["Home / End", "jump to top / bottom"],
-        ["g / G", "jump to top / bottom (less-style)"],
+        ["Home/End/g/G", "jump to top / bottom"],
       ],
     },
     {
@@ -55,6 +54,7 @@ export function HelpDialog({
       items: [
         ["/", "focus file filter"],
         ["c", "create review note"],
+        ["v / V", "mark file viewed / hide viewed"],
         ["Tab", "toggle files/filter focus"],
         ["F10", "open menus"],
         [canRefresh ? "r / q" : "q", canRefresh ? "reload / quit" : "quit"],

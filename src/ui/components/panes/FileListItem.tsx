@@ -71,6 +71,7 @@ export function FileListItem({
   const rowBackground = selected ? theme.panelAlt : theme.panel;
   const stats = sidebarEntryStats(entry);
   const { icon, color } = getFileStateIcon(entry, theme);
+  const fileNameColor = entry.viewed && !selected ? theme.muted : theme.text;
   const iconWidth = icon ? 2 : 0; // icon + space
   const statsSectionWidth = statsWidth > 0 ? statsWidth + 1 : 0;
   const nameWidth = Math.max(1, textWidth - 1 - iconWidth - statsSectionWidth);
@@ -103,7 +104,7 @@ export function FileListItem({
         }}
       >
         {icon && <text fg={color}>{icon} </text>}
-        <text fg={theme.text}>{padText(fitText(entry.name, nameWidth), nameWidth)}</text>
+        <text fg={fileNameColor}>{padText(fitText(entry.name, nameWidth), nameWidth)}</text>
         {statsSectionWidth > 0 && (
           <box
             style={{
@@ -122,11 +123,13 @@ export function FileListItem({
                 {index > 0 && <text fg={selected ? theme.text : theme.muted}> </text>}
                 <text
                   fg={
-                    stat.kind === "agent-comment"
-                      ? theme.noteBorder
-                      : stat.kind === "addition"
-                        ? theme.badgeAdded
-                        : theme.badgeRemoved
+                    stat.kind === "viewed"
+                      ? theme.badgeNeutral
+                      : stat.kind === "agent-comment"
+                        ? theme.noteBorder
+                        : stat.kind === "addition"
+                          ? theme.badgeAdded
+                          : theme.badgeRemoved
                   }
                 >
                   {stat.text}

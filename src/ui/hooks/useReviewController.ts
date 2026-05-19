@@ -48,6 +48,13 @@ import {
   type ReviewState,
   resolveReviewNavigationTarget,
 } from "../lib/reviewState";
+import {
+  currentViewedFilePaths,
+  filePatchHash,
+  loadViewedFiles,
+  saveViewedFiles,
+  type ViewedFilesByPath,
+} from "../lib/viewedFiles";
 
 /** Clamp one numeric index into an inclusive range. */
 function clamp(value: number, min: number, max: number) {
@@ -128,9 +135,12 @@ export interface ReviewController {
   liveCommentCount: number;
   liveCommentSummaries: SessionLiveCommentSummary[];
   liveCommentsByFileId: Record<string, LiveComment[]>;
+  hideViewedFiles: boolean;
   reviewNoteCount: number;
   reviewNoteSummaries: SessionReviewNoteSummary[];
   userNotesByFileId: Record<string, UserReviewNote[]>;
+  viewedFileCount: number;
+  viewedFilePaths: Set<string>;
   moveToAnnotatedFile: (delta: number) => void;
   moveToAnnotatedHunk: (delta: number) => void;
   moveToFile: (delta: number) => void;
@@ -158,6 +168,8 @@ export interface ReviewController {
     options?: { revealMode?: "none" | "first" },
   ) => AppliedCommentBatchResult;
   clearFilter: () => void;
+  toggleCurrentFileViewed: () => void;
+  toggleHideViewedFiles: () => void;
   clearLiveComments: (filePath?: string) => ClearedCommentsResult;
   navigateToLocation: (input: NavigateToHunkToolInput) => NavigatedSelectionResult;
   removeLiveComment: (commentId: string) => RemovedCommentResult;
@@ -176,13 +188,23 @@ export interface ReviewController {
 }
 
 /** Own the shared review stream state used by both the UI and session bridge. */
-export function useReviewController({ files }: { files: DiffFile[] }): ReviewController {
+export function useReviewController({
+  files,
+  viewedFilesReviewKey,
+}: {
+  files: DiffFile[];
+  viewedFilesReviewKey?: string;
+}): ReviewController {
   const [filter, setFilter] = useState("");
   const [selectedFileId, setSelectedFileId] = useState(files[0]?.id ?? "");
   const [selectedHunkIndex, setSelectedHunkIndex] = useState(0);
   const [selectedFileTopAlignRequestId, setSelectedFileTopAlignRequestId] = useState(0);
   const [selectedHunkRevealRequestId, setSelectedHunkRevealRequestId] = useState(0);
   const [scrollToNote, setScrollToNote] = useState(false);
+  const [hideViewedFiles, setHideViewedFiles] = useState(false);
+  const [viewedFilesByPath, setViewedFilesByPath] = useState<ViewedFilesByPath>(() =>
+    loadViewedFiles(viewedFilesReviewKey),
+  );
   const [liveCommentsByFileId, setLiveCommentsByFileId] = useState<Record<string, LiveComment[]>>(
     {},
   );
@@ -232,6 +254,10 @@ export function useReviewController({ files }: { files: DiffFile[] }): ReviewCon
   }
 
   const deferredFilter = useDeferredValue(filter);
+  const viewedFilePaths = useMemo(
+    () => currentViewedFilePaths(files, viewedFilesByPath),
+    [files, viewedFilesByPath],
+  );
 
   const {
     allFiles,
@@ -247,16 +273,20 @@ export function useReviewController({ files }: { files: DiffFile[] }): ReviewCon
         files,
         liveCommentsByFileId: mergeAnnotationMaps(liveCommentsByFileId, userNotesByFileId),
         filterQuery: deferredFilter,
+        hideViewedFiles,
+        viewedFilePaths,
         selectedFileId,
         selectedHunkIndex,
       }),
     [
       deferredFilter,
       files,
+      hideViewedFiles,
       liveCommentsByFileId,
       selectedFileId,
       selectedHunkIndex,
       userNotesByFileId,
+      viewedFilePaths,
     ],
   );
 
@@ -328,6 +358,41 @@ export function useReviewController({ files }: { files: DiffFile[] }): ReviewCon
   useEffect(() => {
     reconcileSelectedHunkIndex();
   }, [reconcileSelectedHunkIndex]);
+
+  useEffect(() => {
+    setViewedFilesByPath(loadViewedFiles(viewedFilesReviewKey));
+  }, [viewedFilesReviewKey]);
+
+  useEffect(() => {
+    saveViewedFiles(viewedFilesReviewKey, viewedFilesByPath);
+  }, [viewedFilesByPath, viewedFilesReviewKey]);
+
+  const toggleHideViewedFiles = useCallback(() => {
+    setHideViewedFiles((current) => !current);
+  }, []);
+
+  const toggleCurrentFileViewed = useCallback(() => {
+    if (!selectedFile) {
+      return;
+    }
+
+    const path = selectedFile.path;
+    const patchHash = filePatchHash(selectedFile);
+    setViewedFilesByPath((current) => {
+      const existing = current[path];
+      const next = { ...current };
+      if (existing?.patchHash === patchHash) {
+        delete next[path];
+      } else {
+        next[path] = {
+          path,
+          patchHash,
+          viewedAt: new Date().toISOString(),
+        };
+      }
+      return next;
+    });
+  }, [selectedFile]);
 
   /** Move through the full visible review stream one hunk at a time. */
   const moveToHunk = useCallback(
@@ -925,12 +990,15 @@ export function useReviewController({ files }: { files: DiffFile[] }): ReviewCon
     draftNote,
     expandedGapsByFileId,
     filter,
+    hideViewedFiles,
     liveCommentCount,
     liveCommentSummaries,
     liveCommentsByFileId,
     reviewNoteCount,
     reviewNoteSummaries,
     userNotesByFileId,
+    viewedFileCount: viewedFilePaths.size,
+    viewedFilePaths,
     scrollToNote,
     selectedFile,
     selectedFileId,
@@ -946,6 +1014,8 @@ export function useReviewController({ files }: { files: DiffFile[] }): ReviewCon
     addLiveComment,
     addLiveCommentBatch,
     clearFilter,
+    toggleCurrentFileViewed,
+    toggleHideViewedFiles,
     cancelDraftNote,
     clearLiveComments,
     moveToAnnotatedFile,

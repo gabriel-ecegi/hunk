@@ -19,6 +19,7 @@ export interface SessionFileSummary {
   additions: number;
   deletions: number;
   hunkCount: number;
+  viewed?: boolean;
 }
 
 export interface SessionReviewHunk {
@@ -59,6 +60,8 @@ export interface HunkSessionState {
   liveComments: SessionLiveCommentSummary[];
   reviewNoteCount?: number;
   reviewNotes?: SessionReviewNoteSummary[];
+  viewedFilePaths?: string[];
+  hideViewedFiles?: boolean;
 }
 
 export type HunkSessionRegistration = SessionRegistration<HunkSessionInfo>;

@@ -70,6 +70,8 @@ export interface UseAppKeyboardShortcutsOptions {
   toggleFocusArea: () => void;
   toggleGapForSelectedHunk: () => void;
   toggleHelp: () => void;
+  toggleCurrentFileViewed: () => void;
+  toggleHideViewedFiles: () => void;
   toggleHunkHeaders: () => void;
   toggleLineNumbers: () => void;
   toggleLineWrap: () => void;
@@ -107,6 +109,8 @@ export function useAppKeyboardShortcuts({
   toggleFocusArea,
   toggleGapForSelectedHunk,
   toggleHelp,
+  toggleCurrentFileViewed,
+  toggleHideViewedFiles,
   toggleHunkHeaders,
   toggleLineNumbers,
   toggleLineWrap,
@@ -428,6 +432,16 @@ export function useAppKeyboardShortcuts({
 
     if (key.name === "s") {
       runAndCloseMenu(toggleSidebar);
+      return;
+    }
+
+    if (key.sequence === "V" || (key.name === "v" && key.shift)) {
+      runAndCloseMenu(toggleHideViewedFiles);
+      return;
+    }
+
+    if (key.name === "v" || key.sequence === "v") {
+      runAndCloseMenu(toggleCurrentFileViewed);
       return;
     }
 

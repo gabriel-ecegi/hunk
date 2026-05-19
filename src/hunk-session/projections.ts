@@ -39,7 +39,10 @@ function findSelectedReviewFile(entry: HunkSessionEntryLike) {
 }
 
 /** Reduce one review-export file back to the summary fields used by session listings. */
-export function summarizeReviewFile(reviewFile: SessionReviewFile): SessionFileSummary {
+export function summarizeReviewFile(
+  reviewFile: SessionReviewFile,
+  viewedFilePaths = new Set<string>(),
+): SessionFileSummary {
   return {
     id: reviewFile.id,
     path: reviewFile.path,
@@ -47,6 +50,7 @@ export function summarizeReviewFile(reviewFile: SessionReviewFile): SessionFileS
     additions: reviewFile.additions,
     deletions: reviewFile.deletions,
     hunkCount: reviewFile.hunkCount,
+    viewed: viewedFilePaths.has(reviewFile.path),
   };
 }
 
@@ -54,11 +58,12 @@ export function summarizeReviewFile(reviewFile: SessionReviewFile): SessionFileS
 export function serializeReviewFile(
   reviewFile: SessionReviewFile,
   includePatch: boolean,
+  viewedFilePaths = new Set<string>(),
 ): SessionReviewFile {
   return includePatch
-    ? reviewFile
+    ? { ...reviewFile, viewed: viewedFilePaths.has(reviewFile.path) }
     : {
-        ...summarizeReviewFile(reviewFile),
+        ...summarizeReviewFile(reviewFile, viewedFilePaths),
         hunks: reviewFile.hunks,
       };
 }
@@ -76,7 +81,9 @@ export function buildListedHunkSession(entry: HunkSessionEntryLike): ListedSessi
     title: entry.registration.info.title,
     sourceLabel: entry.registration.info.sourceLabel,
     fileCount: entry.registration.info.files.length,
-    files: entry.registration.info.files.map(summarizeReviewFile),
+    files: entry.registration.info.files.map((file) =>
+      summarizeReviewFile(file, new Set(entry.snapshot.state.viewedFilePaths ?? [])),
+    ),
     snapshot: entry.snapshot,
   };
 }
@@ -112,6 +119,7 @@ export function buildHunkSessionReview(
 ): SessionReview {
   const selectedFile = findSelectedReviewFile(entry);
   const includePatch = options.includePatch ?? false;
+  const viewedFilePaths = new Set(entry.snapshot.state.viewedFilePaths ?? []);
 
   return {
     sessionId: entry.registration.sessionId,
@@ -120,7 +128,9 @@ export function buildHunkSessionReview(
     cwd: entry.registration.cwd,
     repoRoot: entry.registration.repoRoot,
     inputKind: entry.registration.info.inputKind,
-    selectedFile: selectedFile ? serializeReviewFile(selectedFile, includePatch) : null,
+    selectedFile: selectedFile
+      ? serializeReviewFile(selectedFile, includePatch, viewedFilePaths)
+      : null,
     selectedHunk: selectedFile
       ? (selectedFile.hunks[entry.snapshot.state.selectedHunkIndex] ?? null)
       : null,
@@ -129,7 +139,9 @@ export function buildHunkSessionReview(
     reviewNoteCount:
       entry.snapshot.state.reviewNoteCount ?? entry.snapshot.state.reviewNotes?.length ?? 0,
     reviewNotes: options.includeNotes ? (entry.snapshot.state.reviewNotes ?? []) : undefined,
-    files: entry.registration.info.files.map((file) => serializeReviewFile(file, includePatch)),
+    files: entry.registration.info.files.map((file) =>
+      serializeReviewFile(file, includePatch, viewedFilePaths),
+    ),
   };
 }
 

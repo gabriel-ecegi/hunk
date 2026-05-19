@@ -28,6 +28,7 @@ import { fileRowId } from "./lib/ids";
 import { openSelectedFileInEditor } from "./lib/openInEditor";
 import { resolveResponsiveLayout } from "./lib/responsive";
 import { resizeSidebarWidth } from "./lib/sidebar";
+import { buildViewedFilesReviewKey } from "./lib/viewedFiles";
 import { availableThemes, resolveTheme } from "./themes";
 
 type FocusArea = "files" | "filter" | "note";
@@ -139,7 +140,19 @@ export function App({
     [bootstrap.customTheme],
   );
   const activeTheme = resolveTheme(themeId, detectedThemeMode ?? null, bootstrap.customTheme);
-  const review = useReviewController({ files: bootstrap.changeset.files });
+  const viewedFilesReviewKey = useMemo(
+    () =>
+      buildViewedFilesReviewKey({
+        cwd: process.cwd(),
+        sourceLabel: bootstrap.changeset.sourceLabel,
+        title: bootstrap.changeset.title,
+      }),
+    [bootstrap.changeset.sourceLabel, bootstrap.changeset.title],
+  );
+  const review = useReviewController({
+    files: bootstrap.changeset.files,
+    viewedFilesReviewKey,
+  });
   const filteredFiles = review.visibleFiles;
   const selectedFile = review.selectedFile;
   const selectedHunkIndex = review.selectedHunkIndex;
@@ -193,10 +206,12 @@ export function App({
     removeLiveComment: review.removeLiveComment,
     reviewNoteCount: review.reviewNoteCount,
     reviewNoteSummaries: review.reviewNoteSummaries,
+    hideViewedFiles: review.hideViewedFiles,
     selectedFile,
     selectedHunk: review.selectedHunk,
     selectedHunkIndex,
     showAgentNotes,
+    viewedFilePaths: review.viewedFilePaths,
   });
 
   const bodyPadding = pagerMode ? 0 : BODY_PADDING;
@@ -621,6 +636,7 @@ export function App({
         copyDecorations,
         showAgentNotes,
         showHelp,
+        hideViewedFiles: review.hideViewedFiles,
         showHunkHeaders,
         showLineNumbers,
         renderSidebar,
@@ -628,6 +644,8 @@ export function App({
         toggleAgentNotes,
         toggleFocusArea,
         toggleHelp,
+        toggleCurrentFileViewed: review.toggleCurrentFileViewed,
+        toggleHideViewedFiles: review.toggleHideViewedFiles,
         toggleHunkHeaders,
         toggleLineNumbers,
         toggleLineWrap,
@@ -651,12 +669,15 @@ export function App({
       toggleCopyDecorations,
       showAgentNotes,
       showHelp,
+      review.hideViewedFiles,
       showHunkHeaders,
       showLineNumbers,
       renderSidebar,
       toggleAgentNotes,
       toggleFocusArea,
       toggleHelp,
+      review.toggleCurrentFileViewed,
+      review.toggleHideViewedFiles,
       toggleHunkHeaders,
       toggleLineNumbers,
       toggleLineWrap,
@@ -710,6 +731,8 @@ export function App({
     toggleFocusArea,
     toggleGapForSelectedHunk: review.toggleSelectedHunkGap,
     toggleHelp,
+    toggleCurrentFileViewed: review.toggleCurrentFileViewed,
+    toggleHideViewedFiles: review.toggleHideViewedFiles,
     toggleHunkHeaders,
     toggleLineNumbers,
     toggleLineWrap,

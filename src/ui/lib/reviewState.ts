@@ -26,6 +26,8 @@ export interface BuildReviewStateOptions {
   files: DiffFile[];
   liveCommentsByFileId: Record<string, AgentAnnotation[]>;
   filterQuery: string;
+  hideViewedFiles?: boolean;
+  viewedFilePaths?: Set<string>;
   selectedFileId: string;
   selectedHunkIndex: number;
 }
@@ -51,17 +53,22 @@ export function buildReviewState({
   files,
   liveCommentsByFileId,
   filterQuery,
+  hideViewedFiles = false,
+  viewedFilePaths = new Set<string>(),
   selectedFileId,
   selectedHunkIndex,
 }: BuildReviewStateOptions): ReviewState {
   const allFiles = mergeFileAnnotationsByFileId(files, liveCommentsByFileId);
-  const visibleFiles = filterReviewFiles(allFiles, filterQuery);
+  const filteredFiles = filterReviewFiles(allFiles, filterQuery);
+  const visibleFiles = hideViewedFiles
+    ? filteredFiles.filter((file) => !viewedFilePaths.has(file.path))
+    : filteredFiles;
   const selectedFile = resolveSelectedFile(allFiles, visibleFiles, selectedFileId);
 
   return {
     allFiles,
     visibleFiles,
-    sidebarEntries: buildSidebarEntries(visibleFiles),
+    sidebarEntries: buildSidebarEntries(visibleFiles, viewedFilePaths),
     selectedFile,
     selectedHunk: selectedFile?.metadata.hunks[selectedHunkIndex],
     hunkCursors: buildHunkCursors(visibleFiles),

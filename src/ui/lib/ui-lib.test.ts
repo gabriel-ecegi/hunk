@@ -152,6 +152,7 @@ describe("ui helpers", () => {
       copyDecorations: true,
       showAgentNotes: true,
       showHelp: false,
+      hideViewedFiles: true,
       showHunkHeaders: false,
       showLineNumbers: true,
       renderSidebar: false,
@@ -159,6 +160,8 @@ describe("ui helpers", () => {
       toggleAgentNotes: () => {},
       toggleFocusArea: () => {},
       toggleHelp: () => {},
+      toggleCurrentFileViewed: () => {},
+      toggleHideViewedFiles: () => {},
       toggleHunkHeaders: () => {},
       toggleLineNumbers: () => {},
       toggleLineWrap: () => {},
@@ -176,6 +179,8 @@ describe("ui helpers", () => {
       "Focus filter",
       "Open file in editor",
       "Reload",
+      "Mark file viewed",
+      "Hide viewed files",
       "Quit",
     ]);
     expect(menus.file[0]).toMatchObject({
@@ -183,6 +188,11 @@ describe("ui helpers", () => {
       label: "Toggle files/filter focus",
       hint: "Tab",
     });
+    expect(
+      menus.file.some(
+        (entry) => entry.kind === "item" && entry.label === "Hide viewed files" && entry.checked,
+      ),
+    ).toBe(true);
     expect(
       menus.view
         .filter(

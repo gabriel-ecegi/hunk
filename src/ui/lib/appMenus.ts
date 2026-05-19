@@ -18,6 +18,7 @@ export interface BuildAppMenusOptions {
   copyDecorations: boolean;
   showAgentNotes: boolean;
   showHelp: boolean;
+  hideViewedFiles: boolean;
   showHunkHeaders: boolean;
   showLineNumbers: boolean;
   renderSidebar: boolean;
@@ -25,6 +26,8 @@ export interface BuildAppMenusOptions {
   toggleAgentNotes: () => void;
   toggleFocusArea: () => void;
   toggleHelp: () => void;
+  toggleCurrentFileViewed: () => void;
+  toggleHideViewedFiles: () => void;
   toggleHunkHeaders: () => void;
   toggleLineNumbers: () => void;
   toggleLineWrap: () => void;
@@ -50,6 +53,7 @@ export function buildAppMenus({
   copyDecorations,
   showAgentNotes,
   showHelp,
+  hideViewedFiles,
   showHunkHeaders,
   showLineNumbers,
   renderSidebar,
@@ -57,6 +61,8 @@ export function buildAppMenus({
   toggleAgentNotes,
   toggleFocusArea,
   toggleHelp,
+  toggleCurrentFileViewed,
+  toggleHideViewedFiles,
   toggleHunkHeaders,
   toggleLineNumbers,
   toggleLineWrap,
@@ -101,6 +107,20 @@ export function buildAppMenus({
   }
 
   fileMenuEntries.push(
+    { kind: "separator" },
+    {
+      kind: "item",
+      label: "Mark file viewed",
+      hint: "v",
+      action: toggleCurrentFileViewed,
+    },
+    {
+      kind: "item",
+      label: "Hide viewed files",
+      hint: "V",
+      checked: hideViewedFiles,
+      action: toggleHideViewedFiles,
+    },
     { kind: "separator" },
     {
       kind: "item",

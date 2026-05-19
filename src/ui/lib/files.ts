@@ -8,6 +8,7 @@ export interface FileListEntry {
   kind: "file";
   id: string;
   name: string;
+  viewed: boolean;
   agentCommentsText: string | null;
   additionsText: string | null;
   deletionsText: string | null;
@@ -48,9 +49,16 @@ function formatSidebarStat(prefix: "+" | "-", value: number, truncated = false) 
  * Keep the agent-note badge first so it reads as review context before line churn.
  */
 export function sidebarEntryStats(
-  entry: Pick<FileListEntry, "agentCommentsText" | "additionsText" | "deletionsText">,
+  entry: Pick<FileListEntry, "agentCommentsText" | "additionsText" | "deletionsText" | "viewed">,
 ) {
-  const stats: Array<{ kind: "agent-comment" | "addition" | "deletion"; text: string }> = [];
+  const stats: Array<{
+    kind: "agent-comment" | "addition" | "deletion" | "viewed";
+    text: string;
+  }> = [];
+
+  if (entry.viewed) {
+    stats.push({ kind: "viewed", text: "✓" });
+  }
 
   if (entry.agentCommentsText) {
     stats.push({ kind: "agent-comment", text: entry.agentCommentsText });
@@ -69,7 +77,7 @@ export function sidebarEntryStats(
 
 /** Measure the rendered sidebar stats width, including the space between badges. */
 export function sidebarEntryStatsWidth(
-  entry: Pick<FileListEntry, "agentCommentsText" | "additionsText" | "deletionsText">,
+  entry: Pick<FileListEntry, "agentCommentsText" | "additionsText" | "deletionsText" | "viewed">,
 ) {
   return sidebarEntryStats(entry).reduce(
     (width, stat, index) => width + stat.text.length + (index > 0 ? 1 : 0),
@@ -120,7 +128,10 @@ export function filterReviewFiles(files: DiffFile[], query: string): DiffFile[] 
 }
 
 /** Build the grouped sidebar entries while preserving the review stream order. */
-export function buildSidebarEntries(files: DiffFile[]): SidebarEntry[] {
+export function buildSidebarEntries(
+  files: DiffFile[],
+  viewedFilePaths = new Set<string>(),
+): SidebarEntry[] {
   const entries: SidebarEntry[] = [];
   let activeGroup: string | null = null;
 
@@ -146,6 +157,7 @@ export function buildSidebarEntries(files: DiffFile[]): SidebarEntry[] {
       kind: "file",
       id: file.id,
       name: sidebarFileName(file),
+      viewed: viewedFilePaths.has(file.path),
       agentCommentsText: agentCommentCount > 0 ? `*${agentCommentCount}` : null,
       additionsText: formatSidebarStat("+", file.stats.additions, file.statsTruncated),
       deletionsText: formatSidebarStat("-", file.stats.deletions),

@@ -64,6 +64,24 @@ describe("files helpers", () => {
     });
   });
 
+  test("buildSidebarEntries marks viewed files", () => {
+    const file = createTestDiffFile({
+      id: "viewed",
+      path: "src/ui/viewed.ts",
+      before: lines("export const value = 1;"),
+      after: lines("export const value = 2;"),
+    });
+
+    const [entry] = buildSidebarEntries([file], new Set(["src/ui/viewed.ts"])).filter(
+      (item) => item.kind === "file",
+    );
+
+    expect(entry).toMatchObject({
+      name: "viewed.ts",
+      viewed: true,
+    });
+  });
+
   test("buildSidebarEntries includes compact per-file comment counts before diff stats", () => {
     const withComments = createTestDiffFile({
       id: "with-comments",
