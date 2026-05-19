@@ -28,6 +28,7 @@ import { fileRowId } from "./lib/ids";
 import { openSelectedFileInEditor } from "./lib/openInEditor";
 import { resolveResponsiveLayout } from "./lib/responsive";
 import { resizeSidebarWidth } from "./lib/sidebar";
+import { loadPersistedThemeId, savePersistedThemeId } from "./lib/themeState";
 import { buildViewedFilesReviewKey } from "./lib/viewedFiles";
 import { availableThemes, resolveTheme } from "./themes";
 
@@ -110,6 +111,7 @@ export function App({
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(bootstrap.initialMode);
   const [themeId, setThemeId] = useState(
     () =>
+      loadPersistedThemeId() ??
       resolveTheme(
         bootstrap.initialTheme,
         bootstrap.initialThemeMode ?? renderer.themeMode,
@@ -332,6 +334,12 @@ export function App({
     },
     [maxCodeHorizontalOffset, wrapLines],
   );
+
+  /** Persist and apply a concrete built-in theme selection. */
+  const selectThemeId = useCallback((nextThemeId: string) => {
+    savePersistedThemeId(nextThemeId);
+    setThemeId(nextThemeId);
+  }, []);
 
   /** Preserve the current review position before changing the active diff layout. */
   const selectLayoutMode = useCallback((mode: LayoutMode) => {
@@ -615,8 +623,8 @@ export function App({
   const cycleTheme = useCallback(() => {
     const currentIndex = themeOptions.findIndex((theme) => theme.id === activeTheme.id);
     const nextIndex = (currentIndex + 1) % themeOptions.length;
-    setThemeId(themeOptions[nextIndex]!.id);
-  }, [activeTheme.id, themeOptions]);
+    selectThemeId(themeOptions[nextIndex]!.id);
+  }, [activeTheme.id, selectThemeId, themeOptions]);
 
   const menus = useMemo(
     () =>
@@ -632,7 +640,7 @@ export function App({
         refreshCurrentInput: triggerRefreshCurrentInput,
         requestQuit,
         selectLayoutMode,
-        selectThemeId: setThemeId,
+        selectThemeId,
         copyDecorations,
         showAgentNotes,
         showHelp,
@@ -665,6 +673,7 @@ export function App({
       requestQuit,
       review.moveToHunk,
       selectLayoutMode,
+      selectThemeId,
       triggerRefreshCurrentInput,
       toggleCopyDecorations,
       showAgentNotes,
