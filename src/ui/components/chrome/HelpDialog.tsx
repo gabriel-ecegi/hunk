@@ -37,6 +37,7 @@ export function HelpDialog({
       items: [
         ["Wheel", "scroll vertically"],
         ["Shift+Wheel", "scroll code horizontally"],
+        ["Click [ ]", "toggle pinned file viewed"],
       ],
     },
     {
@@ -54,7 +55,8 @@ export function HelpDialog({
       items: [
         ["/", "focus file filter"],
         ["c", "create review note"],
-        ["v / V", "mark file viewed / hide viewed"],
+        ["v", "toggle current file viewed"],
+        ["V", "hide/show viewed files"],
         ["Tab", "toggle files/filter focus"],
         ["F10", "open menus"],
         [canRefresh ? "r / q" : "q", canRefresh ? "reload / quit" : "quit"],

@@ -118,6 +118,32 @@ describe("computeWatchSignature", () => {
     expect(changedSignature).toEqual(initialSignature);
   });
 
+  test("tracks working tree changes for trailing three-dot diff inputs", () => {
+    const dir = createTempRepo("hunk-watch-trailing-three-dot-");
+
+    writeFileSync(join(dir, "tracked.ts"), "export const tracked = 1;\n");
+    git(dir, "add", "tracked.ts");
+    git(dir, "commit", "-m", "initial");
+    git(dir, "branch", "main");
+
+    writeFileSync(join(dir, "tracked.ts"), "export const tracked = 2;\n");
+    git(dir, "add", "tracked.ts");
+    git(dir, "commit", "-m", "second");
+
+    writeFileSync(join(dir, "tracked.ts"), "export const tracked = 3;\n");
+    const initialSignature = withCwd(dir, () =>
+      computeWatchSignature(createGitInput({ range: "main..." })),
+    );
+
+    writeFileSync(join(dir, "tracked.ts"), "export const tracked = 4;\n");
+    const changedSignature = withCwd(dir, () =>
+      computeWatchSignature(createGitInput({ range: "main..." })),
+    );
+
+    expect(changedSignature).not.toEqual(initialSignature);
+    expect(changedSignature).toContain("export const tracked = 4;");
+  });
+
   test("rejects unsupported watch operations before invoking adapter signatures", () => {
     expect(() =>
       computeWatchSignature({

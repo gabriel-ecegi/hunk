@@ -543,6 +543,60 @@ describe("UI components", () => {
     expect(firstLine[statsIndex + "+2 -1".length + 1]).toBe(" ");
   });
 
+  test("DiffPane renders a clickable viewed toggle in the pinned header", async () => {
+    const bootstrap = createBootstrap();
+    const theme = resolveTheme("midnight", null);
+    const selectFile = mock(() => undefined);
+    const toggleFileViewed = mock(() => undefined);
+    const setup = await testRender(
+      <DiffPane
+        diffContentWidth={72}
+        files={bootstrap.changeset.files}
+        headerLabelWidth={40}
+        headerStatsWidth={16}
+        layout="split"
+        scrollRef={createRef()}
+        selectedFileId="alpha"
+        selectedHunkIndex={0}
+        separatorWidth={68}
+        showAgentNotes={false}
+        showLineNumbers={true}
+        showHunkHeaders={true}
+        wrapLines={false}
+        wrapToggleScrollTop={null}
+        theme={theme}
+        viewedFilePaths={new Set()}
+        width={76}
+        onSelectFile={selectFile}
+        onToggleFileViewed={toggleFileViewed}
+      />,
+      { width: 80, height: 18 },
+    );
+
+    try {
+      await settleDiffPane(setup);
+
+      const frame = setup.captureCharFrame();
+      expect(frame).toContain("[ ] Viewed");
+      const lines = frame.split("\n");
+      const viewedY = lines.findIndex((line) => line.includes("[ ] Viewed"));
+      const viewedX = lines[viewedY]?.indexOf("[ ] Viewed") ?? -1;
+      expect(viewedY).toBeGreaterThanOrEqual(0);
+      expect(viewedX).toBeGreaterThanOrEqual(0);
+
+      await act(async () => {
+        await setup.mockMouse.click(viewedX + 1, viewedY);
+      });
+
+      expect(toggleFileViewed).toHaveBeenCalledWith("alpha");
+      expect(selectFile).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => {
+        setup.renderer.destroy();
+      });
+    }
+  });
+
   test("DiffRowView renders a clickable add-note affordance for a hovered diff row", async () => {
     const theme = resolveTheme("midnight", null);
     const startUserNote = mock(() => undefined);
@@ -2235,13 +2289,13 @@ describe("UI components", () => {
     const frame = await captureFrame(
       <HelpDialog
         canRefresh={true}
-        terminalHeight={38}
+        terminalHeight={42}
         terminalWidth={76}
         theme={theme}
         onClose={() => {}}
       />,
       76,
-      38,
+      42,
     );
 
     const expectedRows = [
@@ -2261,6 +2315,7 @@ describe("UI components", () => {
       "Mouse",
       "Wheel           scroll vertically",
       "Shift+Wheel     scroll code horizontally",
+      "Click [ ]       toggle pinned file viewed",
       "View",
       "1 / 2 / 0       split / stack / auto",
       "s / t           sidebar / theme",
@@ -2270,7 +2325,8 @@ describe("UI components", () => {
       "Review",
       "/               focus file filter",
       "c               create review note",
-      "v / V           mark file viewed / hide viewed",
+      "v               toggle current file viewed",
+      "V               hide/show viewed files",
       "Tab             toggle files/filter focus",
       "F10             open menus",
       "r / q           reload / quit",
@@ -2306,6 +2362,7 @@ describe("UI components", () => {
         showHeader={true}
         showSeparator={true}
         theme={theme}
+        viewed={false}
         onSelect={() => {}}
       />,
       80,

@@ -9,6 +9,7 @@ import {
   resolveGitCommitRef,
   resolveGitDiffEndpoints,
   resolveGitRepoRoot,
+  resolveWorkingTreeDiffInput,
   runGitText,
   type GitDiffEndpoint,
   type GitDiffEndpoints,
@@ -227,13 +228,14 @@ export const gitAdapter: VcsAdapter = {
   async loadReview(operation, { cwd, gitExecutable = "git" }) {
     switch (operation.kind) {
       case "working-tree-diff": {
-        const input = operation.input;
+        const originalInput = operation.input;
+        const input = resolveWorkingTreeDiffInput(originalInput, { cwd, gitExecutable });
         const repoRoot = resolveGitRepoRoot(input, { cwd, gitExecutable });
         const repoName = basename(repoRoot);
-        const title = input.staged
+        const title = originalInput.staged
           ? `${repoName} staged changes`
-          : input.range
-            ? `${repoName} ${input.range}`
+          : originalInput.range
+            ? `${repoName} ${originalInput.range}`
             : `${repoName} working tree`;
         const largeTrackedFiles = parseGitNumstat(
           runGitText({ input, args: buildGitDiffNumstatArgs(input), cwd, gitExecutable }),
@@ -303,7 +305,7 @@ export const gitAdapter: VcsAdapter = {
   watchSignature(operation) {
     switch (operation.kind) {
       case "working-tree-diff": {
-        const input = operation.input;
+        const input = resolveWorkingTreeDiffInput(operation.input);
         const trackedPatch = runGitText({ input, args: buildGitDiffArgs(input) });
         const repoRoot = resolveGitRepoRoot(input);
         const untrackedSignatures = listGitUntrackedFiles(input, { repoRoot }).map(

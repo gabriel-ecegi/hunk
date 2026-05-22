@@ -111,12 +111,10 @@ export function App({
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(bootstrap.initialMode);
   const [themeId, setThemeId] = useState(
     () =>
-      loadPersistedThemeId() ??
-      resolveTheme(
-        bootstrap.initialTheme,
-        bootstrap.initialThemeMode ?? renderer.themeMode,
-        bootstrap.customTheme,
-      ).id,
+      bootstrap.customTheme
+        ? resolveTheme(bootstrap.initialTheme, bootstrap.initialThemeMode ?? renderer.themeMode, bootstrap.customTheme).id
+        : (loadPersistedThemeId() ??
+          resolveTheme(bootstrap.initialTheme, bootstrap.initialThemeMode ?? renderer.themeMode).id),
   );
   // Soft reloads replace bootstrap without re-running startup terminal theme detection.
   const [detectedThemeMode] = useState(() => bootstrap.initialThemeMode);
@@ -158,6 +156,7 @@ export function App({
   const filteredFiles = review.visibleFiles;
   const selectedFile = review.selectedFile;
   const selectedHunkIndex = review.selectedHunkIndex;
+  const currentFileViewed = selectedFile ? review.viewedFilePaths.has(selectedFile.path) : false;
   const moveToAnnotatedFile = review.moveToAnnotatedFile;
   const moveToAnnotatedHunk = review.moveToAnnotatedHunk;
   const moveToFile = review.moveToFile;
@@ -377,6 +376,28 @@ export function App({
       setTransientNoticeText((current) => (current === text ? null : current));
     }, durationMs);
   }, []);
+
+  const showViewedToggleNotice = useCallback(
+    (result: ReturnType<typeof review.toggleCurrentFileViewed>) => {
+      if (!result?.hiddenFromReview) {
+        return;
+      }
+
+      showTransientNotice(`Marked ${result.filePath} viewed and hid it from the review.`);
+    },
+    [review.toggleCurrentFileViewed, showTransientNotice],
+  );
+
+  const toggleCurrentFileViewed = useCallback(() => {
+    showViewedToggleNotice(review.toggleCurrentFileViewed());
+  }, [review.toggleCurrentFileViewed, showViewedToggleNotice]);
+
+  const toggleFileViewed = useCallback(
+    (fileId: string) => {
+      showViewedToggleNotice(review.toggleFileViewed(fileId));
+    },
+    [review.toggleFileViewed, showViewedToggleNotice],
+  );
 
   // Clear any pending transient-notice timer on unmount to avoid state updates after unmount.
   useEffect(() => {
@@ -632,6 +653,7 @@ export function App({
         activeThemeId: activeTheme.id,
         availableThemes: themeOptions,
         canRefreshCurrentInput,
+        currentFileViewed,
         focusFilter,
         layoutMode,
         moveToAnnotatedFile,
@@ -652,7 +674,7 @@ export function App({
         toggleAgentNotes,
         toggleFocusArea,
         toggleHelp,
-        toggleCurrentFileViewed: review.toggleCurrentFileViewed,
+        toggleCurrentFileViewed,
         toggleHideViewedFiles: review.toggleHideViewedFiles,
         toggleHunkHeaders,
         toggleLineNumbers,
@@ -666,6 +688,7 @@ export function App({
       themeOptions,
       canRefreshCurrentInput,
       copyDecorations,
+      currentFileViewed,
       focusFilter,
       layoutMode,
       moveToAnnotatedFile,
@@ -685,7 +708,7 @@ export function App({
       toggleAgentNotes,
       toggleFocusArea,
       toggleHelp,
-      review.toggleCurrentFileViewed,
+      toggleCurrentFileViewed,
       review.toggleHideViewedFiles,
       toggleHunkHeaders,
       toggleLineNumbers,
@@ -740,7 +763,7 @@ export function App({
     toggleFocusArea,
     toggleGapForSelectedHunk: review.toggleSelectedHunkGap,
     toggleHelp,
-    toggleCurrentFileViewed: review.toggleCurrentFileViewed,
+    toggleCurrentFileViewed,
     toggleHideViewedFiles: review.toggleHideViewedFiles,
     toggleHunkHeaders,
     toggleLineNumbers,
@@ -920,6 +943,7 @@ export function App({
           selectedHunkRevealRequestId={review.selectedHunkRevealRequestId}
           theme={activeTheme}
           width={diffPaneWidth}
+          viewedFilePaths={review.viewedFilePaths}
           onActiveAddNoteAffordanceChange={setActiveAddNoteTarget}
           onRemoveUserNote={review.removeUserNote}
           onSaveDraftNote={saveDraftNote}
@@ -933,6 +957,7 @@ export function App({
           }}
           onCopyFeedback={showTransientNotice}
           onSelectFile={jumpToFile}
+          onToggleFileViewed={toggleFileViewed}
           onToggleGap={review.toggleGap}
           onViewportCenteredHunkChange={(fileId, hunkIndex) =>
             review.selectHunk(fileId, hunkIndex, { preserveViewport: true })

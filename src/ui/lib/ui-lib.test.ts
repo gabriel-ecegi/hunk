@@ -140,6 +140,7 @@ describe("ui helpers", () => {
       activeThemeId: "graphite",
       availableThemes: availableThemes(),
       canRefreshCurrentInput: true,
+      currentFileViewed: true,
       focusFilter: () => {},
       layoutMode: "stack",
       moveToAnnotatedFile: () => {},
@@ -179,8 +180,8 @@ describe("ui helpers", () => {
       "Focus filter",
       "Open file in editor",
       "Reload",
-      "Mark file viewed",
-      "Hide viewed files",
+      "Current file viewed",
+      "Hide viewed files from review",
       "Quit",
     ]);
     expect(menus.file[0]).toMatchObject({
@@ -190,7 +191,15 @@ describe("ui helpers", () => {
     });
     expect(
       menus.file.some(
-        (entry) => entry.kind === "item" && entry.label === "Hide viewed files" && entry.checked,
+        (entry) =>
+          entry.kind === "item" &&
+          entry.label === "Hide viewed files from review" &&
+          entry.checked,
+      ),
+    ).toBe(true);
+    expect(
+      menus.file.some(
+        (entry) => entry.kind === "item" && entry.label === "Current file viewed" && entry.checked,
       ),
     ).toBe(true);
     expect(
@@ -221,6 +230,7 @@ describe("ui helpers", () => {
         label: "My Theme",
       }),
       canRefreshCurrentInput: false,
+      currentFileViewed: false,
       focusFilter: () => {},
       layoutMode: "split",
       moveToAnnotatedFile: () => {},
@@ -233,6 +243,7 @@ describe("ui helpers", () => {
       copyDecorations: false,
       showAgentNotes: false,
       showHelp: false,
+      hideViewedFiles: false,
       showHunkHeaders: true,
       showLineNumbers: true,
       renderSidebar: true,
@@ -240,6 +251,8 @@ describe("ui helpers", () => {
       toggleAgentNotes: () => {},
       toggleFocusArea: () => {},
       toggleHelp: () => {},
+      toggleCurrentFileViewed: () => {},
+      toggleHideViewedFiles: () => {},
       toggleHunkHeaders: () => {},
       toggleLineNumbers: () => {},
       toggleLineWrap: () => {},

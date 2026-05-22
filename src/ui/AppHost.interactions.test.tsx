@@ -713,6 +713,55 @@ describe("App interactions", () => {
     }
   });
 
+  test("marking the current file viewed while hide viewed is active shows a status notice", async () => {
+    const setup = await testRender(<AppHost bootstrap={createSingleFileBootstrap()} />, {
+      width: 120,
+      height: 20,
+    });
+
+    try {
+      await flush(setup);
+
+      await act(async () => {
+        await setup.mockInput.pressKey("F10");
+      });
+      await waitForFrame(setup, (frame) => frame.includes("Hide viewed files from review"));
+
+      for (let index = 0; index < 5; index += 1) {
+        await act(async () => {
+          await setup.mockInput.pressArrow("down");
+        });
+        await flush(setup);
+      }
+
+      await act(async () => {
+        await setup.mockInput.pressEnter();
+      });
+      await flush(setup);
+
+      await act(async () => {
+        await setup.mockInput.typeText("v");
+      });
+      let frame = await waitForFrame(setup, (nextFrame) =>
+        nextFrame.includes("Marked alpha.ts viewed and hid it from the review."),
+      );
+      expect(frame).toContain("Marked alpha.ts viewed and hid it from the review.");
+
+      await act(async () => {
+        await Bun.sleep(950);
+      });
+      await flush(setup);
+
+      frame = setup.captureCharFrame();
+      expect(frame).toContain("No files match the current filter.");
+      expect(frame).toContain("Marked alpha.ts viewed and hid it from the review.");
+    } finally {
+      await act(async () => {
+        setup.renderer.destroy();
+      });
+    }
+  });
+
   test("pager mode keyboard shortcut can wrap long lines", async () => {
     const setup = await testRender(<AppHost bootstrap={createWrapBootstrap(true)} />, {
       width: 140,

@@ -464,6 +464,36 @@ describe("loadAppBootstrap", () => {
     ]);
   });
 
+  test("treats trailing three-dot diff as merge-base against the working tree", async () => {
+    const dir = createTempRepo("hunk-git-trailing-three-dot-");
+
+    writeFileSync(join(dir, "tracked.ts"), "export const tracked = 1;\n");
+    git(dir, "add", "tracked.ts");
+    git(dir, "commit", "-m", "initial");
+    git(dir, "branch", "base-branch");
+
+    writeFileSync(join(dir, "tracked.ts"), "export const tracked = 2;\n");
+    git(dir, "add", "tracked.ts");
+    git(dir, "commit", "-m", "second");
+
+    writeFileSync(join(dir, "tracked.ts"), "export const tracked = 3;\n");
+    writeFileSync(join(dir, "new-file.ts"), "export const added = true;\n");
+
+    const bootstrap = await loadFromRepo(dir, {
+      kind: "vcs",
+      range: "base-branch...",
+      staged: false,
+      options: { mode: "auto" },
+    });
+
+    expect(bootstrap.changeset.files.map((file) => file.path)).toEqual([
+      "tracked.ts",
+      "new-file.ts",
+    ]);
+    expect(bootstrap.changeset.files[0]?.patch).toContain("export const tracked = 3;");
+    expect(bootstrap.changeset.title).toContain("base-branch...");
+  });
+
   test("excludes untracked files for explicit git ranges that do not include the working tree", async () => {
     const dir = createTempRepo("hunk-git-range-no-untracked-");
 

@@ -72,6 +72,7 @@ import {
 } from "./copySelection";
 
 const EMPTY_VISIBLE_AGENT_NOTES: VisibleAgentNote[] = [];
+const EMPTY_VIEWED_FILE_PATHS = new Set<string>();
 
 /**
  * Clamp one vertical scroll target into the currently reachable review-stream extent.
@@ -205,8 +206,10 @@ export function DiffPane({
   onCopySelectionText,
   onScrollCodeHorizontally = () => {},
   onSelectFile,
+  onToggleFileViewed,
   onToggleGap = NOOP_TOGGLE_GAP,
   onViewportCenteredHunkChange,
+  viewedFilePaths = EMPTY_VIEWED_FILE_PATHS,
 }: {
   codeHorizontalOffset?: number;
   diffContentWidth: number;
@@ -253,8 +256,10 @@ export function DiffPane({
   onCopySelectionText?: (text: string) => void | boolean;
   onScrollCodeHorizontally?: (delta: number) => void;
   onSelectFile: (fileId: string) => void;
+  onToggleFileViewed?: (fileId: string) => void;
   onToggleGap?: (fileId: string, gapKey: string) => void;
   onViewportCenteredHunkChange?: (fileId: string, hunkIndex: number) => void;
+  viewedFilePaths?: Set<string>;
 }) {
   const renderer = useRenderer();
   const mouseWheelScrollAcceleration = useMemo(
@@ -1610,6 +1615,10 @@ export function DiffPane({
                 headerStatsWidth={headerStatsWidth}
                 theme={theme}
                 onSelect={() => onSelectFile(pinnedHeaderFile.id)}
+                viewedIndicator={{
+                  viewed: viewedFilePaths.has(pinnedHeaderFile.path),
+                  onToggle: () => onToggleFileViewed?.(pinnedHeaderFile.id),
+                }}
               />
             </box>
           ) : null}
@@ -1657,7 +1666,9 @@ export function DiffPane({
                         showHeader={shouldRenderInStreamFileHeader(index)}
                         showSeparator={index > 0}
                         theme={theme}
+                        viewed={viewedFilePaths.has(file.path)}
                         onSelect={() => onSelectFile(file.id)}
+                        onToggleViewed={() => onToggleFileViewed?.(file.id)}
                       />
                     );
                   }
@@ -1684,6 +1695,7 @@ export function DiffPane({
                       sourceStatus={sourceStatusByFileId[file.id]}
                       wrapLines={wrapLines}
                       theme={theme}
+                      viewed={viewedFilePaths.has(file.path)}
                       hoverActive={hoveredFileId === null || hoveredFileId === file.id}
                       hoverClearSignal={addNoteHoverClearSignal}
                       viewWidth={diffContentWidth}
@@ -1704,6 +1716,7 @@ export function DiffPane({
                           : undefined
                       }
                       onSelect={() => onSelectFile(file.id)}
+                      onToggleViewed={() => onToggleFileViewed?.(file.id)}
                       onToggleGap={(gapKey) => onToggleGap(file.id, gapKey)}
                     />
                   );

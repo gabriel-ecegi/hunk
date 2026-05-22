@@ -13,7 +13,9 @@ interface DiffSectionPlaceholderProps {
   showHeader: boolean;
   showSeparator: boolean;
   theme: AppTheme;
+  viewed: boolean;
   onSelect: () => void;
+  onToggleViewed?: () => void;
 }
 
 /** Reserve offscreen section height without mounting its full diff rows. */
@@ -26,7 +28,9 @@ export function DiffSectionPlaceholder({
   showHeader,
   showSeparator,
   theme,
+  viewed,
   onSelect,
+  onToggleViewed,
 }: DiffSectionPlaceholderProps) {
   return (
     <box
@@ -57,6 +61,10 @@ export function DiffSectionPlaceholder({
           headerLabelWidth={headerLabelWidth}
           headerStatsWidth={headerStatsWidth}
           theme={theme}
+          viewedIndicator={{
+            viewed,
+            onToggle: () => onToggleViewed?.(),
+          }}
           onSelect={onSelect}
         />
       ) : null}

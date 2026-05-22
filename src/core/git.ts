@@ -49,6 +49,35 @@ function withNormalizedDiffPrefixes(args: string[]) {
   return [...DIFF_PREFIX_NORMALIZATION_ARGS, ...args];
 }
 
+
+/** Return whether a range omits the right side of Git three-dot syntax. */
+function isTrailingThreeDotRange(range: string) {
+  return range.endsWith("...") && !range.slice(0, -3).includes("...") && range.length > 3;
+}
+
+/** Resolve `<target>...` to a merge-base ref so Git compares that base against the working tree. */
+export function resolveWorkingTreeDiffInput(
+  input: VcsCommandInput,
+  {
+    cwd = process.cwd(),
+    gitExecutable = "git",
+  }: Pick<RunGitTextOptions, "cwd" | "gitExecutable"> = {},
+): VcsCommandInput {
+  if (input.staged || !input.range || !isTrailingThreeDotRange(input.range)) {
+    return input;
+  }
+
+  const baseRef = input.range.slice(0, -3);
+  const mergeBase = runGitText({
+    input,
+    args: ["merge-base", baseRef, "HEAD"],
+    cwd,
+    gitExecutable,
+  }).trim();
+
+  return mergeBase ? { ...input, range: mergeBase } : input;
+}
+
 /** Build the exact `git diff` arguments used for the shared working-tree and range review path. */
 export function buildGitDiffArgs(input: VcsCommandInput, excludedPathspecs: string[] = []) {
   const args = ["diff", "--no-ext-diff", "--find-renames", "--no-color"];

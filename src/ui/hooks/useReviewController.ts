@@ -57,6 +57,8 @@ import {
 } from "../lib/viewedFiles";
 
 /** Clamp one numeric index into an inclusive range. */
+const VIEWED_HIDE_DELAY_MS = 900;
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -127,6 +129,13 @@ export interface ReviewSelectionOptions {
   scrollToNote?: boolean;
 }
 
+export interface ViewedFileToggleResult {
+  fileId: string;
+  filePath: string;
+  viewed: boolean;
+  hiddenFromReview: boolean;
+}
+
 export interface ReviewController {
   allFiles: DiffFile[];
   expandedGapsByFileId: Record<string, ReadonlySet<string>>;
@@ -168,7 +177,8 @@ export interface ReviewController {
     options?: { revealMode?: "none" | "first" },
   ) => AppliedCommentBatchResult;
   clearFilter: () => void;
-  toggleCurrentFileViewed: () => void;
+  toggleCurrentFileViewed: () => ViewedFileToggleResult | null;
+  toggleFileViewed: (fileId: string) => ViewedFileToggleResult | null;
   toggleHideViewedFiles: () => void;
   clearLiveComments: (filePath?: string) => ClearedCommentsResult;
   navigateToLocation: (input: NavigateToHunkToolInput) => NavigatedSelectionResult;
@@ -205,6 +215,10 @@ export function useReviewController({
   const [viewedFilesByPath, setViewedFilesByPath] = useState<ViewedFilesByPath>(() =>
     loadViewedFiles(viewedFilesReviewKey),
   );
+  const [temporarilyVisibleViewedFileIds, setTemporarilyVisibleViewedFileIds] = useState(
+    () => new Set<string>(),
+  );
+  const viewedHideTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const [liveCommentsByFileId, setLiveCommentsByFileId] = useState<Record<string, LiveComment[]>>(
     {},
   );
@@ -274,6 +288,7 @@ export function useReviewController({
         liveCommentsByFileId: mergeAnnotationMaps(liveCommentsByFileId, userNotesByFileId),
         filterQuery: deferredFilter,
         hideViewedFiles,
+        temporarilyVisibleViewedFileIds,
         viewedFilePaths,
         selectedFileId,
         selectedHunkIndex,
@@ -282,6 +297,7 @@ export function useReviewController({
       deferredFilter,
       files,
       hideViewedFiles,
+      temporarilyVisibleViewedFileIds,
       liveCommentsByFileId,
       selectedFileId,
       selectedHunkIndex,
@@ -289,6 +305,57 @@ export function useReviewController({
       viewedFilePaths,
     ],
   );
+
+  useEffect(() => {
+    return () => {
+      for (const timer of viewedHideTimersRef.current.values()) {
+        clearTimeout(timer);
+      }
+      viewedHideTimersRef.current.clear();
+    };
+  }, []);
+
+  const stopTemporarilyShowingViewedFile = useCallback((fileId: string) => {
+    const timer = viewedHideTimersRef.current.get(fileId);
+    if (timer) {
+      clearTimeout(timer);
+      viewedHideTimersRef.current.delete(fileId);
+    }
+    setTemporarilyVisibleViewedFileIds((current) => {
+      if (!current.has(fileId)) {
+        return current;
+      }
+      const next = new Set(current);
+      next.delete(fileId);
+      return next;
+    });
+  }, []);
+
+  const brieflyShowViewedFileBeforeHiding = useCallback((fileId: string) => {
+    const existingTimer = viewedHideTimersRef.current.get(fileId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    setTemporarilyVisibleViewedFileIds((current) => {
+      const next = new Set(current);
+      next.add(fileId);
+      return next;
+    });
+
+    const timer = setTimeout(() => {
+      viewedHideTimersRef.current.delete(fileId);
+      setTemporarilyVisibleViewedFileIds((current) => {
+        if (!current.has(fileId)) {
+          return current;
+        }
+        const next = new Set(current);
+        next.delete(fileId);
+        return next;
+      });
+    }, VIEWED_HIDE_DELAY_MS);
+    viewedHideTimersRef.current.set(fileId, timer);
+  }, []);
 
   /** Update the selection and reveal intent together so diff scrolling stays explicit. */
   const selectHunk = useCallback(
@@ -371,28 +438,67 @@ export function useReviewController({
     setHideViewedFiles((current) => !current);
   }, []);
 
-  const toggleCurrentFileViewed = useCallback(() => {
-    if (!selectedFile) {
-      return;
+  const toggleFileViewed = useCallback(
+    (fileId: string): ViewedFileToggleResult | null => {
+      const file = allFiles.find((candidate) => candidate.id === fileId);
+      if (!file) {
+        return null;
+      }
+
+      const path = file.path;
+      const patchHash = filePatchHash(file);
+      const nextViewed = !viewedFilePaths.has(path);
+      const visibleBeforeToggle = visibleFiles.some((visibleFile) => visibleFile.id === file.id);
+
+      const hiddenFromReview = hideViewedFiles && nextViewed && visibleBeforeToggle;
+
+      setViewedFilesByPath((current) => {
+        const next = { ...current };
+        if (!nextViewed) {
+          delete next[path];
+        } else {
+          next[path] = {
+            path,
+            patchHash,
+            viewedAt: new Date().toISOString(),
+          };
+        }
+        return next;
+      });
+
+      if (hiddenFromReview) {
+        brieflyShowViewedFileBeforeHiding(file.id);
+      } else {
+        stopTemporarilyShowingViewedFile(file.id);
+      }
+
+      return {
+        fileId: file.id,
+        filePath: path,
+        viewed: nextViewed,
+        hiddenFromReview,
+      };
+    },
+    [
+      allFiles,
+      brieflyShowViewedFileBeforeHiding,
+      hideViewedFiles,
+      stopTemporarilyShowingViewedFile,
+      viewedFilePaths,
+      visibleFiles,
+    ],
+  );
+
+  const toggleCurrentFileViewed = useCallback((): ViewedFileToggleResult | null => {
+    const currentFile =
+      (selectedFileId ? allFiles.find((file) => file.id === selectedFileId) : undefined) ??
+      allFiles[0];
+    if (!currentFile) {
+      return null;
     }
 
-    const path = selectedFile.path;
-    const patchHash = filePatchHash(selectedFile);
-    setViewedFilesByPath((current) => {
-      const existing = current[path];
-      const next = { ...current };
-      if (existing?.patchHash === patchHash) {
-        delete next[path];
-      } else {
-        next[path] = {
-          path,
-          patchHash,
-          viewedAt: new Date().toISOString(),
-        };
-      }
-      return next;
-    });
-  }, [selectedFile]);
+    return toggleFileViewed(currentFile.id);
+  }, [allFiles, selectedFileId, toggleFileViewed]);
 
   /** Move through the full visible review stream one hunk at a time. */
   const moveToHunk = useCallback(
@@ -1015,6 +1121,7 @@ export function useReviewController({
     addLiveCommentBatch,
     clearFilter,
     toggleCurrentFileViewed,
+    toggleFileViewed,
     toggleHideViewedFiles,
     cancelDraftNote,
     clearLiveComments,

@@ -33,6 +33,7 @@ interface DiffSectionProps {
   theme: AppTheme;
   visibleAgentNotes: VisibleAgentNote[];
   visibleBodyBounds?: VisibleBodyBounds;
+  viewed: boolean;
   viewWidth: number;
   hoverActive?: boolean;
   hoverClearSignal?: number;
@@ -41,6 +42,7 @@ interface DiffSectionProps {
   onActiveAddNoteAffordanceChange?: (affordance: ActiveAddNoteAffordance | null) => void;
   onStartUserNoteAtHunk?: (hunkIndex: number, target?: UserNoteLineTarget) => void;
   onSelect: () => void;
+  onToggleViewed?: () => void;
   onToggleGap: (gapKey: string) => void;
 }
 
@@ -67,6 +69,7 @@ function DiffSectionComponent({
   theme,
   visibleAgentNotes,
   visibleBodyBounds,
+  viewed,
   viewWidth,
   hoverActive = true,
   hoverClearSignal = 0,
@@ -75,6 +78,7 @@ function DiffSectionComponent({
   onActiveAddNoteAffordanceChange,
   onStartUserNoteAtHunk,
   onSelect,
+  onToggleViewed,
   onToggleGap,
 }: DiffSectionProps) {
   return (
@@ -109,6 +113,10 @@ function DiffSectionComponent({
           headerLabelWidth={headerLabelWidth}
           headerStatsWidth={headerStatsWidth}
           theme={theme}
+          viewedIndicator={{
+            viewed,
+            onToggle: () => onToggleViewed?.(),
+          }}
           onSelect={onSelect}
         />
       ) : null}
@@ -172,6 +180,7 @@ export const DiffSection = memo(DiffSectionComponent, (previous, next) => {
     previous.theme === next.theme &&
     previous.visibleAgentNotes === next.visibleAgentNotes &&
     previous.visibleBodyBounds === next.visibleBodyBounds &&
+    previous.viewed === next.viewed &&
     previous.viewWidth === next.viewWidth
   );
 });

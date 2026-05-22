@@ -196,6 +196,107 @@ describe("useReviewController", () => {
     }
   });
 
+  test("toggleCurrentFileViewed marks the first loaded file even when the controller mounted empty", async () => {
+    const controllerRef: { current: ReviewController | null } = { current: null };
+    const setFilesRef: { current: ((nextFiles: DiffFile[]) => void) | null } = { current: null };
+    const setup = await testRender(
+      <ReviewControllerHarness
+        initialFiles={[]}
+        onController={(nextController) => {
+          controllerRef.current = nextController;
+        }}
+        onSetFiles={(nextSetFiles) => {
+          setFilesRef.current = nextSetFiles;
+        }}
+      />,
+      { width: 80, height: 4 },
+    );
+
+    try {
+      await flush(setup);
+
+      await act(async () => {
+        expectValue(setFilesRef.current)([
+          createDiffFile("alpha", "alpha.ts", "export const alpha = 1;\n", "export const alpha = 2;\n"),
+        ]);
+      });
+      await flush(setup);
+
+      let result;
+      await act(async () => {
+        result = expectValue(controllerRef.current).toggleCurrentFileViewed();
+      });
+      await flush(setup);
+
+      expect(result).toMatchObject({
+        fileId: "alpha",
+        filePath: "alpha.ts",
+        viewed: true,
+        hiddenFromReview: false,
+      });
+      expect(expectValue(controllerRef.current).viewedFilePaths.has("alpha.ts")).toBe(true);
+    } finally {
+      await act(async () => {
+        setup.renderer.destroy();
+      });
+    }
+  });
+
+  test("toggleCurrentFileViewed reports when hide viewed removes the current file", async () => {
+    const controllerRef: { current: ReviewController | null } = { current: null };
+    const setup = await testRender(
+      <ReviewControllerHarness
+        initialFiles={[
+          createDiffFile("alpha", "alpha.ts", "export const alpha = 1;\n", "export const alpha = 2;\n"),
+          createDiffFile("beta", "beta.ts", "export const beta = 1;\n", "export const beta = 2;\n"),
+        ]}
+        onController={(nextController) => {
+          controllerRef.current = nextController;
+        }}
+      />,
+      { width: 80, height: 4 },
+    );
+
+    try {
+      await flush(setup);
+
+      await act(async () => {
+        expectValue(controllerRef.current).toggleHideViewedFiles();
+      });
+      await flush(setup);
+
+      let result;
+      await act(async () => {
+        result = expectValue(controllerRef.current).toggleCurrentFileViewed();
+      });
+      await flush(setup);
+
+      expect(result).toMatchObject({
+        fileId: "alpha",
+        filePath: "alpha.ts",
+        viewed: true,
+        hiddenFromReview: true,
+      });
+      expect(expectValue(controllerRef.current).visibleFiles.map((file) => file.path)).toEqual([
+        "alpha.ts",
+        "beta.ts",
+      ]);
+      expect(expectValue(controllerRef.current).selectedFile?.path).toBe("alpha.ts");
+
+      await act(async () => {
+        await Bun.sleep(950);
+      });
+      await flush(setup);
+
+      expect(expectValue(controllerRef.current).visibleFiles.map((file) => file.path)).toEqual(["beta.ts"]);
+      expect(expectValue(controllerRef.current).selectedFile?.path).toBe("beta.ts");
+    } finally {
+      await act(async () => {
+        setup.renderer.destroy();
+      });
+    }
+  });
+
   test("moves through visible files with clamped file-header alignment", async () => {
     const controllerRef: { current: ReviewController | null } = { current: null };
     const setup = await testRender(

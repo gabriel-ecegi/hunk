@@ -6,6 +6,7 @@ export interface BuildAppMenusOptions {
   activeThemeId: string;
   availableThemes: AppTheme[];
   canRefreshCurrentInput: boolean;
+  currentFileViewed: boolean;
   focusFilter: () => void;
   layoutMode: LayoutMode;
   moveToAnnotatedFile: (delta: number) => void;
@@ -41,6 +42,7 @@ export function buildAppMenus({
   activeThemeId,
   availableThemes,
   canRefreshCurrentInput,
+  currentFileViewed,
   focusFilter,
   layoutMode,
   moveToAnnotatedFile,
@@ -110,13 +112,14 @@ export function buildAppMenus({
     { kind: "separator" },
     {
       kind: "item",
-      label: "Mark file viewed",
+      label: "Current file viewed",
       hint: "v",
+      checked: currentFileViewed,
       action: toggleCurrentFileViewed,
     },
     {
       kind: "item",
-      label: "Hide viewed files",
+      label: "Hide viewed files from review",
       hint: "V",
       checked: hideViewedFiles,
       action: toggleHideViewedFiles,
